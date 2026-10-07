@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from portfolio.backend.read_resume_from_pdf import read_pdf_text
 import sys
@@ -113,13 +114,39 @@ def get_parsed_resume() -> Resume:
         _cached_resume = resume_parser(resume_text)
     return _cached_resume
 
-def pdf_extaction(file_path:str):
-    resume_text = read_pdf_text(file_path)
-    return resume_text
+def get_frontend_file(filename: str) -> Path:
+    # Look for file in root, frontend dir, or relative paths
+    root_file = BASE_DIR.parent.parent.parent / filename
+    if root_file.exists():
+        return root_file
+    frontend_file = BASE_DIR.parent / "frontend" / filename
+    if frontend_file.exists():
+        return frontend_file
+    return BASE_DIR / filename
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
+def homepage():
+    index_path = get_frontend_file("index.html")
+    if index_path.exists():
+        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>AI Candidate Assistant</h1><p>Frontend template file not found.</p>")
+
+@app.get("/style.css")
+def get_style():
+    style_path = get_frontend_file("style.css")
+    if style_path.exists():
+        return FileResponse(style_path, media_type="text/css")
+    return HTMLResponse(content="", media_type="text/css")
+
+@app.get("/script.js")
+def get_script():
+    script_path = get_frontend_file("script.js")
+    if script_path.exists():
+        return FileResponse(script_path, media_type="application/javascript")
+    return HTMLResponse(content="", media_type="application/javascript")
+
 @app.get("/api/health")
-def home():
+def health():
     return {"status": "online", "message": "Prajwal Gawande AI Candidate Assistant API is running"}
 
 @app.post("/chat")
@@ -134,6 +161,7 @@ def chat(request: ChatRequest):
         return {"answer": answer}
     except Exception as e:
         return {"error": f"An error occurred: {str(e)}"}
+
 
 
 
